@@ -1,0 +1,9 @@
+{% extends "admin/change_list.html" %}
+{% block content %}
+<div class="admin-recette-summary" style="margin-bottom:20px;">
+    <strong>Recette du jour :</strong> {{ recette_jour }} DH &nbsp;|&nbsp;
+    <strong>7 jours :</strong> {{ recette_7j }} DH &nbsp;|&nbsp;
+    <strong>Mois :</strong> {{ recette_mois }} DH
+</div>
+{{ block.super }}
+{% endblock %}

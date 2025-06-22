@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Connexion</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gradient-to-br from-green-50 via-blue-50 to-yellow-50 min-h-screen flex items-center justify-center">
+    <form method="post" class="bg-white rounded-2xl shadow-2xl p-10 max-w-sm w-full flex flex-col gap-6">
+        {% csrf_token %}
+        <h1 class="text-2xl font-extrabold text-center text-green-700 mb-2">Connexion</h1>
+        {{ form.as_p }}
+        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded transition">Se connecter</button>
+        {% if form.errors %}
+        <p class="text-red-600 text-center text-sm">Nom d'utilisateur ou mot de passe incorrect.</p>
+        {% endif %}
+    </form>
+</body>
+</html>

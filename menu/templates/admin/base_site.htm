@@ -1,0 +1,84 @@
+{% extends "admin/base_site.html" %}
+{% load static %}
+{% load i18n %}
+
+{% block title %}Administration du Restaurant{% endblock %}
+
+{% block branding %}
+<style>
+    /* En-tête personnalisé */
+    #header {
+        background-color: #800000; /* bordeaux */
+        color: white;
+    }
+
+    /* Remplacer le texte Django par un logo */
+    #branding h1 a {
+        display: inline-block;
+        height: 40px;
+        width: 200px;
+        font-size: 0; /* cache le texte */
+        background-image: url("{% static 'img/logo-resto.png' %}");
+        background-size: contain;
+        background-repeat: no-repeat;
+    }
+
+    /* Texte d'accueil / dashboard */
+    .dashboard #content > div:first-child {
+        margin-bottom: 20px;
+        padding: 10px;
+        background-color: #fffbe6;
+        border-left: 5px solid #FFD700; /* doré */
+        font-weight: bold;
+    }
+
+    /* Modules (boîtes) */
+    .module caption {
+        color: #800000;
+        font-weight: bold;
+        font-size: 16px;
+        text-transform: capitalize;
+    }
+
+    /* Lien du haut ("Welcome, user") */
+    #user-tools {
+        color: white;
+    }
+
+    /* Notifications */
+    .admin-notification {
+        background-color: #fff3cd;
+        border: 1px solid #ffeeba;
+        padding: 10px;
+        margin: 15px 0;
+        color: #856404;
+        font-weight: bold;
+    }
+
+    .admin-notification a {
+        margin-left: 10px;
+        text-decoration: underline;
+        color: #856404;
+    }
+</style>
+
+<h1 id="site-name">
+    <a href="{% url 'admin:index' %}">Administration du Restaurant</a>
+</h1>
+{% endblock %}
+
+{% block nav-global %}
+  {{ block.super }}
+  <div>
+      Bonjour 👋, bienvenue sur le tableau de bord du restaurant.
+  </div>
+
+  {% if notifications %}
+    {% if notifications.count %}
+      <div class="admin-notification">
+        🔔 Il y a <strong>{{ notifications.count }}</strong> nouvelle(s) commande(s) non vue(s).
+        <a href="{% url 'admin:menu_notification_changelist' %}">Voir les notifications</a>
+      </div>
+    {% endif %}
+  {% endif %}
+{% endblock %}

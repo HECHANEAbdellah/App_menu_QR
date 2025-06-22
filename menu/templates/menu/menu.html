@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title id="page-title">Menu - Table {{ table.number }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gradient-to-br from-blue-50 via-green-50 to-yellow-50 min-h-screen text-gray-800">
+    <form style="display:none">{% csrf_token %}</form>
+
+    {% if notification_message %}
+    <div class="fixed top-6 left-1/2 -translate-x-1/2 bg-orange-500 text-white px-6 py-3 rounded-lg shadow-lg z-50 flex items-center gap-4 animate-bounce">
+        <span>{{ notification_message }}</span>
+        <button class="ml-auto text-xl hover:text-yellow-300" onclick="this.parentElement.remove()">×</button>
+    </div>
+    {% endif %}
+
+    <div class="max-w-3xl mx-auto px-2 py-4">
+        <nav class="sticky top-0 z-40 bg-gradient-to-r from-blue-400 via-green-300 to-yellow-200/80 bg-opacity-90 backdrop-blur-lg shadow-2xl rounded-2xl px-4 py-3 mb-8 flex flex-col md:flex-row items-center justify-between gap-4 border border-blue-200">
+            <!-- Logo/Table -->
+            <div class="flex items-center gap-3 w-full md:w-auto">
+                <span class="text-2xl">🍽️</span>
+                <span class="text-xl font-extrabold text-blue-900 tracking-tight drop-shadow">Menu Table {{ table.number }}</span>
+            </div>
+            <!-- Recherche + Catégories + Historique -->
+            <div class="flex-1 flex flex-col md:flex-row items-center gap-2 w-full md:w-auto">
+                <input
+                    type="text"
+                    id="global-search"
+                    class="w-full md:max-w-xs px-4 py-2 rounded-full border border-blue-300 bg-white/80 focus:outline-none focus:ring-2 focus:ring-blue-400 transition shadow"
+                    placeholder="Rechercher dans tout le menu..."
+                    onkeyup="filterItems()"
+                >
+                <select
+                    id="categories-select"
+                    class="w-full md:w-auto ml-0 md:ml-2 px-4 py-2 rounded-full bg-yellow-300/80 text-blue-900 font-semibold hover:bg-yellow-400 transition shadow"
+                    onchange="showCategory(this.value, document.querySelector(`[data-category-id='${this.value}']`))"
+                >
+                    <option value="" disabled selected id="nav-categories-label">Catégories</option>
+                    {% for category in categories %}
+                        <option value="{{ category.id }}">
+                            {{ category.name }} ({{ category.menuitem_set.count }})
+                        </option>
+                    {% endfor %}
+                </select>
+                <a href="{% url 'historique_commandes' table.id %}"
+                   id="nav-history"
+                   class="w-full md:w-auto ml-0 md:ml-2 px-4 py-2 rounded-full bg-gradient-to-r from-green-400 via-blue-400 to-blue-600 text-white font-bold hover:from-green-500 hover:to-blue-700 transition text-center shadow">
+                     Historique
+                </a>
+            </div>
+        </nav>
+
+
+
+
+        <div id="items-container">
+            {% for category in categories %}
+            <div class="category-items {% if forloop.first %}block{% else %}hidden{% endif %}" id="category-{{ category.id }}">
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                    {% for item in category.menuitem_set.all %}
+                    <div class="bg-white border border-gray-200 rounded-xl p-3 text-center shadow hover:scale-105 transition cursor-pointer flex flex-col"
+                        onclick="showItemDetails('{{ item.id }}')">
+                        {% if item.image %}
+                        <img src="{{ item.image.url }}" alt="{{ item.name }}" class="w-full h-24 object-cover rounded-lg mb-2">
+                        {% endif %}
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="font-bold text-base text-blue-900">{{ item.name }}</span>
+                            <span class="text-green-700 font-semibold">{{ item.price }} DH</span>
+                        </div>
+                        <div class="text-xs text-gray-500 mb-2 line-clamp-2">
+                            {{ item.description|default:"Description non disponible." }}
+                        </div>
+                        <button class="mt-auto w-full py-2 rounded-lg bg-gradient-to-r from-green-400 to-blue-400 text-white font-semibold hover:from-green-500 hover:to-blue-500 transition"
+                            onclick="addToCart('{{ item.id }}', '{{ item.name }}', '{{ item.price }}'); event.stopPropagation();">
+                            Ajouter au panier
+                        </button>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="bg-white rounded-2xl shadow-xl p-6 mx-auto my-8 w-full max-w-lg">
+            <h3 class="text-blue-900 text-xl font-bold mb-4 text-center">🛒 Mon Panier</h3>
+            <div id="panier-items"></div>
+            <div id="total-price" class="text-lg font-bold text-green-700 bg-green-100 rounded px-6 py-2 text-center shadow my-4">Total: 0 DH</div>
+            <button onclick="envoyerCommande()" class="w-full py-2 rounded-lg bg-gradient-to-r from-green-400 to-blue-400 text-white font-semibold mb-2 hover:from-green-500 hover:to-blue-500 transition">
+                ✓ Valider la commande
+            </button>
+        </div>
+
+        <div id="historique-commandes" class="hidden bg-white rounded-2xl shadow-xl p-6 mx-auto my-8 w-full max-w-lg">
+            <h3 class="text-xl font-bold mb-4 text-center text-blue-900">📜 Historique des commandes</h3>
+            <div id="commandes-list"></div>
+            <button onclick="fermerHistorique()" class="w-full py-2 rounded-lg bg-gray-300 text-gray-800 font-semibold hover:bg-gray-400 transition">
+                ← Retour au menu
+            </button>
+        </div>
+
+        <div class="text-center my-4">
+            <label for="language" class="mr-2 font-semibold">Langue:</label>
+            <select id="language" onchange="changeLanguage()" class="px-3 py-2 rounded-lg border border-blue-200 bg-blue-50 focus:outline-none">
+                <option value="fr">Français</option>
+                <option value="en">English</option>
+                <option value="ar">العربية</option>
+            </select>
+        </div>
+    </div>
+
+    <footer class="mt-16 text-center">
+        <div class="flex flex-col items-center gap-2 py-6">
+            <div class="flex items-center gap-2 justify-center">
+                <span class="text-2xl">📱</span>
+                <span class="text-blue-700 font-bold text-lg">Menu QR Client</span>
+            </div>
+            <p class="text-gray-500 text-sm">
+                &copy; {% now "Y" %} Réalisé par HECHANE Abdellah &amp; FINIGUE Lahcen. Tous droits réservés.
+            </p>
+            <div class="flex gap-2 justify-center mt-1">
+                <span class="inline-block w-2 h-2 rounded-full bg-blue-400"></span>
+                <span class="inline-block w-2 h-2 rounded-full bg-green-400"></span>
+                <span class="inline-block w-2 h-2 rounded-full bg-yellow-400"></span>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+let panier = [];
+
+const translations = {
+    fr: {
+        pageTitle: "Menu - Table",
+        searchPlaceholder: "Rechercher dans tout le menu...",
+        addToCart: "Ajouter au panier",
+        basketTitle: "Mon Panier",
+        submitOrder: "✓ Valider la commande",
+        viewOrders: "📋 Voir mes commandes",
+        total: "Total",
+        emptyCart: "Votre panier est vide.",
+        orderHistory: "📜 Historique des commandes",
+        backToMenu: "← Retour au menu",
+        cancelOrder: "Annuler la commande",
+        date: "Date",
+        order: "Commande",
+        noOrders: "Aucune commande trouvée",
+        successMessage: "Commande validée !",
+        language: "Langue",
+        clientMenu: "Menu QR Client",
+        madeBy: "Réalisé par HECHANE Abdellah & FINIGUE Lahcen. Tous droits réservés.",
+        search: "Rechercher un plat...",
+        quantity: "Quantité",
+        remove: "✕",
+        increase: "+",
+        decrease: "-",
+        confirm: "Confirmer",
+        paid: "Payée",
+        pending: "En attente",
+        status: "Statut",
+        navCategories: "Catégories",
+        navHistory: "Historique",
+    },
+    en: {
+        pageTitle: "Menu - Table",
+        searchPlaceholder: "Search the whole menu...",
+        addToCart: "Add to Cart",
+        basketTitle: "My Cart",
+        submitOrder: "✓ Submit Order",
+        viewOrders: "📋 View my orders",
+        total: "Total",
+        emptyCart: "Your cart is empty.",
+        orderHistory: "📜 Order History",
+        backToMenu: "← Back to menu",
+        cancelOrder: "Cancel order",
+        date: "Date",
+        order: "Order",
+        noOrders: "No orders found",
+        successMessage: "Order confirmed!",
+        language: "Language",
+        clientMenu: "QR Menu Client",
+        madeBy: "Made by HECHANE Abdellah & FINIGUE Lahcen. All rights reserved.",
+        search: "Search for a dish...",
+        quantity: "Quantity",
+        remove: "✕",
+        increase: "+",
+        decrease: "-",
+        confirm: "Confirm",
+        paid: "Paid",
+        pending: "Pending",
+        status: "Status",
+        navCategories: "Categories",
+        navHistory: "History",
+    },
+    ar: {
+        pageTitle: "القائمة - الطاولة",
+        searchPlaceholder: "ابحث في كل القائمة...",
+        addToCart: "إضافة إلى السلة",
+        basketTitle: "سلتي",
+        submitOrder: "✓ تأكيد الطلب",
+        viewOrders: "📋 عرض طلباتي",
+        total: "المجموع",
+        emptyCart: "سلتك فارغة.",
+        orderHistory: "📜 سجل الطلبات",
+        backToMenu: "← العودة إلى القائمة",
+        cancelOrder: "إلغاء الطلب",
+        date: "التاريخ",
+        order: "طلب",
+        noOrders: "لا توجد طلبات",
+        successMessage: "تم تأكيد الطلب!",
+        language: "اللغة",
+        clientMenu: "قائمة QR للعميل",
+        madeBy: "أنجزه HECHANE Abdellah و FINIGUE Lahcen. جميع الحقوق محفوظة.",
+        search: "ابحث عن طبق...",
+        quantity: "الكمية",
+        remove: "✕",
+        increase: "+",
+        decrease: "-",
+        confirm: "تأكيد",
+        paid: "مدفوع",
+        pending: "قيد الانتظار",
+        status: "الحالة",
+        navCategories: "الفئات",
+        navHistory: "السجل",
+    }
+};
+
+
+function changeLanguage() {
+    const language = document.getElementById('language').value;
+    localStorage.setItem('selectedLanguage', language); // Sauvegarde la langue
+    updateLanguage(language);
+}
+
+function updateLanguage(language) {
+    // Titre de la page
+    document.getElementById('page-title').textContent = translations[language].pageTitle + " {{ table.number }}";
+    // Placeholder de recherche
+    document.getElementById('global-search').placeholder = translations[language].searchPlaceholder;
+
+    // Titre du panier
+    const panierTitle = document.querySelector('h3.text-blue-900');
+    if (panierTitle) panierTitle.textContent = "🛒 " + translations[language].basketTitle;
+
+    // Bouton valider la commande
+    const btnValider = document.querySelector('button[onclick^="envoyerCommande"]');
+    if (btnValider) btnValider.textContent = translations[language].submitOrder;
+
+    // Bouton voir mes commandes
+    const btnVoirCommandes = document.querySelector('button[onclick^="afficherHistoriqueCommandes"]');
+    if (btnVoirCommandes) btnVoirCommandes.textContent = translations[language].viewOrders;
+
+    // Total panier
+    const totalPrice = document.getElementById('total-price');
+    if (totalPrice) {
+        // On garde le montant déjà affiché
+        const montant = totalPrice.textContent.replace(/[^0-9.,]+/g, '');
+        totalPrice.textContent = translations[language].total + ": " + montant + " DH";
+    }
+
+    // Titre historique commandes
+    const histoTitle = document.querySelector('#historique-commandes h3');
+    if (histoTitle) histoTitle.textContent = "📜 " + translations[language].orderHistory;
+
+    // Bouton retour menu
+    const btnRetour = document.querySelector('#historique-commandes button');
+    if (btnRetour) btnRetour.textContent = translations[language].backToMenu;
+
+    // Label langue
+    const labelLangue = document.querySelector('label[for="language"]');
+    if (labelLangue) labelLangue.textContent = translations[language].language + ":";
+
+    // Footer
+    const footerTitle = document.querySelector('footer .text-blue-700');
+    if (footerTitle) footerTitle.textContent = translations[language].clientMenu;
+    const footerMadeBy = document.querySelector('footer p.text-gray-500');
+    if (footerMadeBy) footerMadeBy.textContent = "© " + new Date().getFullYear() + " " + translations[language].madeBy;
+
+    // Boutons "Ajouter au panier"
+    document.querySelectorAll('button[onclick^="addToCart"]').forEach(btn => {
+        btn.textContent = translations[language].addToCart;
+    });
+
+    // Texte panier vide
+    const panierItems = document.getElementById('panier-items');
+    if (panierItems && panier.length === 0) {
+        panierItems.innerHTML = `<div class="text-center text-gray-400">${translations[language].emptyCart}</div>`;
+    }
+
+    // Navbar
+    const navCategoriesLabel = document.getElementById('nav-categories-label');
+    if (navCategoriesLabel) navCategoriesLabel.textContent = translations[language].navCategories;
+    const navHistory = document.getElementById('nav-history');
+    if (navHistory) navHistory.textContent =translations[language].navHistory;
+}
+
+function showCategory(categoryId, buttonElement) {
+    document.querySelectorAll('.category-items').forEach(category => {
+        category.classList.add('hidden');
+    });
+    document.getElementById('category-' + categoryId).classList.remove('hidden');
+
+    document.querySelectorAll('.category-button').forEach(btn => {
+        btn.classList.remove('bg-gradient-to-r', 'from-green-400', 'to-blue-400', 'text-white');
+        btn.classList.add('bg-yellow-200', 'text-gray-800');
+    });
+    if (buttonElement) {
+        buttonElement.classList.remove('bg-yellow-200', 'text-gray-800');
+        buttonElement.classList.add('bg-gradient-to-r', 'from-green-400', 'to-blue-400', 'text-white');
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    // Vérifie si une langue a été sauvegardée
+    const savedLang = localStorage.getItem('selectedLanguage') || 'fr';
+    document.getElementById('language').value = savedLang;
+    updateLanguage(savedLang);
+    updatePanier();
+});
+
+function addToCart(itemId, itemName, itemPrice) {
+    const existingItem = panier.find(item => item.id === itemId);
+    if (existingItem) {
+        existingItem.quantity += 1;
+    } else {
+        panier.push({
+            id: itemId,
+            name: itemName,
+            price: parseFloat(itemPrice),
+            quantity: 1
+        });
+    }
+    updatePanier();
+}
+
+function updatePanier() {
+    let panierItems = document.getElementById('panier-items');
+    panierItems.innerHTML = '';
+    let totalPrice = 0;
+
+    if (panier.length === 0) {
+        panierItems.innerHTML = '<div class="text-center text-gray-400">Votre panier est vide.</div>';
+    }
+
+    panier.forEach((item, index) => {
+        const panierItem = document.createElement('div');
+        panierItem.className = 'flex items-center justify-between mb-2 p-2 rounded bg-gradient-to-r from-blue-50 to-green-50 shadow-sm';
+        panierItem.innerHTML = `
+            <span class="font-medium">${item.quantity} x ${item.name}</span>
+            <span class="font-semibold text-green-700">${(item.price * item.quantity).toFixed(2)} DH</span>
+            <div class="flex items-center gap-1">
+                <button onclick="decreaseQuantity(${index})" class="px-2 py-1 rounded bg-red-100 text-red-700 hover:bg-red-200 font-bold">-</button>
+                <button onclick="increaseQuantity(${index})" class="px-2 py-1 rounded bg-green-100 text-green-700 hover:bg-green-200 font-bold">+</button>
+                <button onclick="removeFromCart(${index})" class="px-2 py-1 rounded bg-gray-200 text-gray-700 hover:bg-gray-300 font-bold">✕</button>
+            </div>
+        `;
+        panierItems.appendChild(panierItem);
+        totalPrice += item.price * item.quantity;
+    });
+
+    document.getElementById('total-price').textContent = `Total: ${totalPrice.toFixed(2)} DH`;
+}
+
+function removeFromCart(index) {
+    panier.splice(index, 1);
+    updatePanier();
+}
+
+function increaseQuantity(index) {
+    panier[index].quantity += 1;
+    updatePanier();
+}
+
+function decreaseQuantity(index) {
+    if (panier[index].quantity > 1) {
+        panier[index].quantity -= 1;
+    } else {
+        panier.splice(index, 1);
+    }
+    updatePanier();
+}
+
+function filterItems() {
+    const searchTerm = removeAccents(
+        document.getElementById('global-search').value.toLowerCase()
+    );
+    document.querySelectorAll('.category-items').forEach(category => {
+        let hasVisibleItems = false;
+        const items = category.querySelectorAll('.bg-white');
+        items.forEach(item => {
+            const itemName = removeAccents(
+                item.querySelector('span.font-bold').textContent.toLowerCase()
+            );
+            const isVisible = itemName.includes(searchTerm);
+            item.style.display = isVisible ? 'block' : 'none';
+            if (isVisible) hasVisibleItems = true;
+        });
+        category.style.display = hasVisibleItems ? 'block' : 'none';
+    });
+}
+
+function removeAccents(str) {
+    return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+}
+
+function envoyerCommande() {
+    if (panier.length === 0) {
+        alert("Veuillez ajouter au moins un plat au panier avant de valider la commande.");
+        return;
+    }
+    let items = panier.map(item => ({
+        id: item.id,
+        quantity: item.quantity || 1
+    }));
+
+    // Vérification du CSRF token
+    const csrftoken = getCookie('csrftoken');
+    if (!csrftoken) {
+        alert("Erreur : CSRF token manquant. Recharge la page ou reconnecte-toi.");
+        return;
+    }
+
+    fetch(`/menu/{{ table.id }}/submit_order/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': csrftoken
+        },
+        body: JSON.stringify({ items: items })
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error("Erreur serveur : " + response.status);
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.order_id) {
+            let confirmationMessage = document.createElement('div');
+            confirmationMessage.className = "fixed top-10 left-1/2 -translate-x-1/2 bg-green-500 text-white px-8 py-4 rounded-lg shadow-lg z-50 text-center";
+            confirmationMessage.textContent = translations[document.getElementById('language').value].successMessage;
+            document.body.appendChild(confirmationMessage);
+            setTimeout(() => confirmationMessage.remove(), 2500);
+            panier = [];
+            updatePanier();
+        } else {
+            alert('Erreur : ' + (data.error || 'Commande non validée.'));
+        }
+    })
+    .catch(error => {
+        alert('Erreur réseau : ' + error);
+    });
+}
+function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+        let cookies = document.cookie.split(';');
+        for (let i = 0; i < cookies.length; i++) {
+            let cookie = cookies[i].trim();
+            if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                break;
+            }
+        }
+    }
+    return cookieValue;
+}
+
+function afficherCategories() {
+    document.querySelectorAll('.category-items').forEach(category => {
+        category.classList.remove('hidden');
+        category.style.display = 'block';
+    });
+}
+    </script>
+</body>
+</html>

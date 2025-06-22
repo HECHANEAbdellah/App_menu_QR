@@ -1,0 +1,57 @@
+@startuml classes_menu_qr
+set namespaceSeparator none
+class "Category" as menu.models.Category {
+  name : CharField
+}
+class "Cuisinier" as menu.models.Cuisinier {
+  hire_date : DateField
+  is_online : BooleanField
+  phone : CharField
+  user : OneToOneField
+}
+class "MenuItem" as menu.models.MenuItem {
+  category : ForeignKey
+  description : TextField
+  image : ImageField
+  name : CharField
+  price : DecimalField
+  translations : JSONField
+}
+class "Notification" as menu.models.Notification {
+  created_at : DateTimeField
+  is_paid : BooleanField
+  message : CharField
+  order : ForeignKey
+}
+class "Order" as menu.models.Order {
+  STATUS_CHOICES : list
+  created_at : DateTimeField
+  is_paid : BooleanField
+  status : CharField
+  table : ForeignKey
+  get_status_display()
+  total_price()
+}
+class "OrderItem" as menu.models.OrderItem {
+  STATUT_CHOICES : list
+  item : ForeignKey
+  order : ForeignKey
+  quantity : PositiveIntegerField
+  status : str
+  statut : CharField
+  cancel(cancelled_by, reason)
+  delete()
+}
+class "Serveur" as menu.models.Serveur {
+  hire_date : DateField
+  is_online : BooleanField
+  phone : CharField
+  user : OneToOneField
+}
+class "Table" as menu.models.Table {
+  number : PositiveIntegerField
+  qr_code : ImageField
+  session_key : CharField
+  save()
+}
+@enduml

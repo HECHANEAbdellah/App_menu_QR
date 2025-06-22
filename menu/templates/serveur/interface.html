@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Espace Serveur</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+
+<body class="bg-gradient-to-br from-white via-blue-50 to-green-50 min-h-screen font-sans">
+    <!-- Navbar -->
+    <nav class="sticky top-0 z-50 bg-white/90 backdrop-blur-lg shadow-xl rounded-2xl px-4 py-3 mb-8 flex flex-col md:flex-row items-center justify-between gap-4 border border-blue-100">
+        <div class="flex items-center gap-4 w-full md:w-auto">
+            <span class="text-2xl">🧑‍💼</span>
+            <span class="text-xl font-extrabold text-blue-800 tracking-tight drop-shadow" id="server-space-title">Espace Serveur</span>
+            <button id="tab-prets" onclick="showTab('prets')" class="ml-2 px-4 py-2 rounded-full bg-blue-100 text-blue-800 font-semibold hover:bg-blue-200 transition shadow focus:ring-2 focus:ring-blue-400">Plats</button>
+            <button id="tab-validation" onclick="showTab('validation')" class="ml-2 px-4 py-2 rounded-full bg-green-100 text-green-800 font-semibold hover:bg-green-200 transition shadow focus:ring-2 focus:ring-green-400">Commandes clients</button>
+            <button id="tab-paiement" onclick="showTab('paiement')" class="ml-2 px-4 py-2 rounded-full bg-yellow-100 text-yellow-800 font-semibold hover:bg-yellow-200 transition shadow focus:ring-2 focus:ring-yellow-400">Paiements</button>
+        </div>
+        <div class="flex items-center gap-2">
+            <select id="language" onchange="changeLanguage()" class="px-3 py-2 rounded-lg border border-blue-200 bg-blue-50 focus:outline-none text-sm">
+                <option value="fr">Français</option>
+                <option value="en">English</option>
+                <option value="ar">العربية</option>
+            </select>
+            <a href="{% url 'serveur_logout' %}" id="logout-btn" class="bg-gradient-to-r from-red-400 to-red-600 hover:from-red-500 hover:to-red-700 text-white px-4 py-2 rounded-xl font-bold shadow transition text-sm">
+                Déconnexion
+            </a>
+        </div>
+    </nav>
+
+    <main class="w-full px-2 py-3">
+        <!-- Plats prêts -->
+        <div id="tab-content-prets" class="tab-section">
+            <section class="w-full bg-white/90 p-4 md:p-6 mb-8 rounded-xl">
+                <h2 id="section-prets-title" class="text-lg font-extrabold text-blue-700 mb-3 flex items-center gap-2">
+                    <svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                    Plats prêts à servir
+                </h2>
+                {% if orders_items %}
+                    <div class="grid gap-4 sm:grid-cols-2">
+                    {% for order, items in orders_items.items %}
+                        <div class="rounded-xl border border-blue-200 bg-gradient-to-br from-blue-50 via-white to-green-50 p-4 shadow-lg flex flex-col gap-2">
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="font-bold text-blue-800 text-base">#{{ order.id }}</span>
+                                <span class="text-xs text-blue-500 bg-blue-100 px-2 py-0.5 rounded-full">Table <b>{{ order.table.number }}</b></span>
+                            </div>
+                            <ul class="space-y-2 text-sm">
+                                {% for item in items %}
+                                <li class="flex justify-between items-center border-b border-blue-100 last:border-b-0 py-1">
+                                    <div class="flex items-center gap-2">
+                                        <span class="inline-block w-2 h-2 rounded-full bg-green-400"></span>
+                                        <span class="font-semibold text-blue-900">{{ item.item.name }}</span>
+                                        <span class="text-blue-600 font-bold">x{{ item.quantity }}</span>
+                                    </div>
+                                    <form method="post" action="{% url 'mark_item_served' item.id %}">
+                                        {% csrf_token %}
+                                        <button type="submit"
+                                                class="bg-green-500 hover:bg-green-600 text-white px-3 py-1 rounded-lg shadow text-xs font-bold transition">
+                                            Servie
+                                        </button>
+                                    </form>
+                                </li>
+                                {% endfor %}
+                            </ul>
+                            {% if items|length > 1 %}
+                            <form method="post" action="{% url 'serveur_mark_all_served' order.id %}" class="mt-2">
+                                {% csrf_token %}
+                                <button type="submit"
+                                        class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 rounded-xl shadow text-xs transition">
+                                    Tout marquer comme servie
+                                </button>
+                            </form>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center text-gray-400 py-8">Aucun plat prêt.</div>
+                {% endif %}
+            </section>
+        </div>
+
+        <!-- Commandes clients -->
+        <div id="tab-content-validation" class="tab-section hidden">
+            <section class="w-full bg-white/90 p-4 md:p-6 mb-8 rounded-xl">
+                <h2 id="section-validation-title" class="text-base font-bold text-green-700 mb-2 flex items-center gap-2">
+                    <svg class="w-5 h-5 text-green-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3"></path>
+                        <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" fill="none" />
+                    </svg>
+                    Commandes à valider
+                </h2>
+                {% if pending_orders %}
+                    {% for order in pending_orders %}
+                    <div class="rounded-lg border border-green-100 bg-green-50 p-2 mb-2 shadow-sm">
+                        <div class="flex justify-between items-center mb-1">
+                            <span class="font-bold text-green-800 text-sm">#{{ order.id }}</span>
+                            <span class="text-xs text-green-600">Table <b>{{ order.table.number }}</b></span>
+                        </div>
+                        <ul class="space-y-1 text-xs">
+                            {% for item in order.items.all %}
+                            <li class="flex justify-between items-center border-b border-green-100 last:border-b-0 py-1">
+                                <span class="font-medium text-green-900">{{ item.item.name }}</span>
+                                <span class="text-green-700">x{{ item.quantity }}</span>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                        {% if order.status == 'en_attente_serveur' %}
+                        <div class="flex gap-2 mt-2">
+                            <form method="post" action="{% url 'serveur_accept_order' order.id %}">
+                                {% csrf_token %}
+                                <button type="submit"
+                                        class="bg-blue-400 hover:bg-blue-500 text-white font-bold py-1 px-3 rounded shadow text-xs transition">
+                                    Accepter
+                                </button>
+                            </form>
+                            <form method="post" action="{% url 'cancel_order' order.id %}" class="inline">
+                                {% csrf_token %}
+                                <button type="submit"
+                                        class="bg-red-400 hover:bg-red-500 text-white font-bold py-1 px-3 rounded shadow text-xs transition">
+                                    Annuler
+                                </button>
+                            </form>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                {% else %}
+                    <div class="text-center text-gray-400 py-6">Aucune commande en attente.</div>
+                {% endif %}
+            </section>
+        </div>
+
+        <!-- Paiements -->
+        <div id="tab-content-paiement" class="tab-section hidden">
+            <section class="w-full bg-white/90 p-4 md:p-6 mb-8 rounded-xl">
+                <h2 id="section-paiement-title" class="text-base font-bold text-yellow-700 mb-4 flex items-center gap-2">
+                    <svg class="w-5 h-5 text-yellow-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3"></path>
+                        <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" fill="none" />
+                    </svg>
+                    Paiements à encaisser
+                </h2>
+                {% if orders_to_pay %}
+                    <div class="grid gap-4 sm:grid-cols-2">
+                    {% for order in orders_to_pay %}
+                        <div class="rounded-xl border border-yellow-200 bg-gradient-to-br from-yellow-50 via-white to-green-50 p-5 shadow-lg flex flex-col gap-3">
+                            <div class="flex justify-between items-center">
+                                <span class="font-bold text-yellow-800 text-base">#{{ order.id }}</span>
+                                <span class="text-xs text-yellow-700 bg-yellow-100 px-2 py-0.5 rounded-full">Table <b>{{ order.table.number }}</b></span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="font-semibold text-yellow-900 text-sm">Total :</span>
+                                <span class="font-bold text-green-700 text-lg">
+                                    {{ order.get_total|floatformat:2 }} <span class="currency-label">DH</span>
+                                </span>
+                            </div>
+                            <div class="flex items-center gap-2 mt-2">
+                                <span class="font-semibold text-yellow-900 text-xs">
+                                    Paiement&nbsp;:
+                                </span>
+                                {% if not order.is_paid %}
+                                <form method="post" action="{% url 'order_payment' order.id %}" class="inline">
+                                    {% csrf_token %}
+                                    <button type="submit" class="bg-gradient-to-r from-yellow-400 to-green-400 hover:from-yellow-500 hover:to-green-500 text-white px-4 py-2 rounded-full font-bold shadow transition text-xs flex items-center gap-1">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path>
+                                        </svg>
+                                        Confirmer paiement
+                                    </button>
+                                </form>
+                                <span class="ml-2 text-yellow-700 font-semibold text-xs">En attente</span>
+                                {% else %}
+                                <span class="inline-block px-3 py-1 rounded-full bg-green-200 text-green-800 font-bold text-xs">
+                                    Payée
+                                </span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center text-gray-400 py-6">Aucune commande à encaisser.</div>
+                {% endif %}
+            </section>
+        </div>
+    </main>
+
+    <footer class="mt-16 text-center">
+        <div class="flex flex-col items-center gap-2 py-6">
+            <div class="flex items-center gap-2 justify-center">
+                <span class="text-2xl">🧑‍💼</span>
+                <span class="text-green-700 font-bold text-lg">Menu QR Serveur</span>
+            </div>
+            <p class="text-gray-500 text-sm">
+                &copy; {% now "Y" %} Réalisé par FINIGUE Lahcen. Tous droits réservés.
+            </p>
+            <div class="flex gap-2 justify-center mt-1">
+                <span class="inline-block w-2 h-2 rounded-full bg-green-400"></span>
+                <span class="inline-block w-2 h-2 rounded-full bg-blue-400"></span>
+                <span class="inline-block w-2 h-2 rounded-full bg-yellow-400"></span>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+    const translations = {
+        fr: {
+            tabPlats: "Plats",
+            tabValidation: "Commandes clients",
+            tabPaiement: "Paiements",
+            readyDishes: "Plats prêts à servir",
+            markServed: "Servie",
+            markAllServed: "Tout marquer comme servie",
+            pendingOrders: "Commandes à valider",
+            accept: "Accepter",
+            cancel: "Annuler",
+            payments: "Paiements à encaisser",
+            confirmPayment: "Confirmer paiement",
+            paid: "Payée",
+            waiting: "En attente",
+            noReady: "Aucun plat prêt.",
+            noPending: "Aucune commande en attente.",
+            noPayments: "Aucune commande à encaisser.",
+            logout: "Déconnexion",
+            serverSpace: "Espace Serveur",
+            table: "Table",
+            total: "Total",
+            menuServeur: "Menu QR Serveur",
+            madeBy: "Réalisé par FINIGUE Lahcen. Tous droits réservés.",
+            currency: "DH",
+        },
+        en: {
+            tabPlats: "Dishes",
+            tabValidation: "Client Orders",
+            tabPaiement: "Payments",
+            readyDishes: "Dishes ready to serve",
+            markServed: "Served",
+            markAllServed: "Mark all as served",
+            pendingOrders: "Orders to validate",
+            accept: "Accept",
+            cancel: "Cancel",
+            payments: "Payments to collect",
+            confirmPayment: "Confirm payment",
+            paid: "Paid",
+            waiting: "Waiting",
+            noReady: "No ready dish.",
+            noPending: "No pending order.",
+            noPayments: "No payment to collect.",
+            logout: "Logout",
+            serverSpace: "Server Area",
+            table: "Table",
+            total: "Total",
+            menuServeur: "QR Menu Server",
+            madeBy: "Made by FINIGUE Lahcen. All rights reserved.",
+            currency: "MAD",
+        },
+        ar: {
+            tabPlats: "الأطباق",
+            tabValidation: "طلبات الزبائن",
+            tabPaiement: "المدفوعات",
+            readyDishes: "الأطباق الجاهزة للتقديم",
+            markServed: "تم التقديم",
+            markAllServed: "تحديد الكل كمُقدّم",
+            pendingOrders: "طلبات في الانتظار",
+            accept: "قبول",
+            cancel: "إلغاء",
+            payments: "المدفوعات المستحقة",
+            confirmPayment: "تأكيد الدفع",
+            paid: "مدفوع",
+            waiting: "في الانتظار",
+            noReady: "لا يوجد طبق جاهز.",
+            noPending: "لا توجد طلبات في الانتظار.",
+            noPayments: "لا توجد مدفوعات مستحقة.",
+            logout: "تسجيل الخروج",
+            serverSpace: "منطقة النادل",
+            table: "الطاولة",
+            total: "المجموع",
+            menuServeur: "قائمة QR للنادل",
+            madeBy: "أنجزه FINIGUE Lahcen. جميع الحقوق محفوظة.",
+            currency: "درهم",
+        }
+    };
+
+    function showTab(tab) {
+        // Masquer toutes les sections
+        document.querySelectorAll('.tab-section').forEach(sec => sec.classList.add('hidden'));
+        // Afficher la bonne section
+        document.getElementById('tab-content-' + tab).classList.remove('hidden');
+        // Désactiver tous les boutons
+        document.querySelectorAll('button[id^="tab-"]').forEach(btn => {
+            btn.classList.remove('ring-2', 'ring-blue-400', 'ring-green-400', 'ring-yellow-400', 'bg-blue-200', 'bg-green-200', 'bg-yellow-200');
+        });
+        // Mettre en avant le bouton actif
+        let btn = document.getElementById('tab-' + tab);
+        btn.classList.add('ring-2');
+        if(tab === 'prets') btn.classList.add('ring-blue-400', 'bg-blue-200');
+        if(tab === 'validation') btn.classList.add('ring-green-400', 'bg-green-200');
+        if(tab === 'paiement') btn.classList.add('ring-yellow-400', 'bg-yellow-200');
+
+        // Sauvegarder l'onglet courant
+        localStorage.setItem('serveurActiveTab', tab);
+    }
+    // Afficher l'onglet courant ou "prets" par défaut
+    const savedTab = localStorage.getItem('serveurActiveTab') || 'prets';
+    showTab(savedTab);
+
+    function updateLanguage(lang) {
+        // Navbar
+        document.getElementById('tab-prets').textContent = translations[lang].tabPlats;
+        document.getElementById('tab-validation').textContent = translations[lang].tabValidation;
+        document.getElementById('tab-paiement').textContent = translations[lang].tabPaiement;
+        document.getElementById('server-space-title').textContent = translations[lang].serverSpace;
+        document.getElementById('logout-btn').textContent = translations[lang].logout;
+
+        // Titres de sections
+        document.getElementById('section-prets-title').innerHTML = `<svg class="w-6 h-6 text-blue-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg> ${translations[lang].readyDishes}`;
+        document.getElementById('section-validation-title').innerHTML = `<svg class="w-5 h-5 text-green-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3"></path><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" fill="none" /></svg> ${translations[lang].pendingOrders}`;
+        document.getElementById('section-paiement-title').innerHTML = `<svg class="w-5 h-5 text-yellow-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3"></path><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" fill="none" /></svg> ${translations[lang].payments}`;
+
+        // Boutons et labels dynamiques
+        document.querySelectorAll('button, input[type=submit]').forEach(btn => {
+            if (btn.textContent.trim() === 'Servie') btn.textContent = translations[lang].markServed;
+            if (btn.textContent.trim() === 'Tout marquer comme servie') btn.textContent = translations[lang].markAllServed;
+            if (btn.textContent.trim() === 'Accepter') btn.textContent = translations[lang].accept;
+            if (btn.textContent.trim() === 'Annuler') btn.textContent = translations[lang].cancel;
+            if (btn.textContent.trim() === 'Confirmer paiement' || btn.textContent.trim().includes('Confirmer')) btn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"></path></svg> ${translations[lang].confirmPayment}`;
+        });
+
+        // Statuts et badges
+        document.querySelectorAll('.bg-green-200, .bg-yellow-100, .bg-yellow-200, .bg-green-800, .bg-yellow-700, .bg-yellow-100, .bg-green-700').forEach(span => {
+            if (span.textContent.trim() === 'Payée') span.textContent = translations[lang].paid;
+            if (span.textContent.trim() === 'En attente') span.textContent = translations[lang].waiting;
+        });
+
+        // Messages vides
+        document.querySelectorAll('.text-gray-400').forEach(div => {
+            if (div.textContent.includes('Aucun plat prêt')) div.textContent = translations[lang].noReady;
+            if (div.textContent.includes('Aucune commande en attente')) div.textContent = translations[lang].noPending;
+            if (div.textContent.includes('Aucune commande à encaisser')) div.textContent = translations[lang].noPayments;
+        });
+
+        // Footer
+        const footerTitle = document.querySelector('footer .text-green-700');
+        if (footerTitle) footerTitle.textContent = translations[lang].menuServeur;
+        const footerMadeBy = document.querySelector('footer p.text-gray-500');
+        if (footerMadeBy) footerMadeBy.textContent = "© " + new Date().getFullYear() + " " + translations[lang].madeBy;
+
+        // Labels "Table", "Total"
+        document.querySelectorAll('span, div, td, th').forEach(el => {
+            if (el.textContent.trim() === 'Table') el.textContent = translations[lang].table;
+            if (el.textContent.trim() === 'Total :') el.textContent = translations[lang].total + " :";
+        });
+
+        // Mise à jour des devises
+        document.querySelectorAll('.currency-label').forEach(el => {
+            el.textContent = translations[lang].currency;
+        });
+    }
+
+    function changeLanguage() {
+        const lang = document.getElementById('language').value;
+        localStorage.setItem('selectedLanguageServeur', lang);
+        updateLanguage(lang);
+    }
+    document.addEventListener('DOMContentLoaded', function() {
+        const savedLang = localStorage.getItem('selectedLanguageServeur') || 'fr';
+        document.getElementById('language').value = savedLang;
+        updateLanguage(savedLang);
+    });
+    </script>
+</body>
+
+</html>

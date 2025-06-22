@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Cuisine</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gradient-to-br from-blue-50 via-green-100 to-yellow-50 min-h-screen py-6 px-2 font-sans">
+    <!-- Navbar moderne -->
+    <nav class="sticky top-0 z-50 bg-gradient-to-r from-blue-100 via-green-100 to-yellow-100/80 backdrop-blur shadow-lg rounded-2xl px-4 py-3 mb-8 flex flex-col md:flex-row items-center justify-between gap-4 border border-blue-200">
+        <!-- Logo et titre -->
+        <div class="flex items-center gap-3">
+            <span class="text-3xl">👨‍🍳</span>
+            <span id="navbar-title" class="text-xl font-extrabold text-blue-900 tracking-tight drop-shadow">Espace Cuisine</span>
+        </div>
+        <!-- Langue + Déconnexion à droite -->
+        <div class="flex items-center gap-2">
+            <select id="language" onchange="changeLanguage()" class="px-3 py-2 rounded-lg border border-blue-300 bg-white text-blue-900 font-semibold focus:outline-none shadow">
+                <option value="fr">Français</option>
+                <option value="en">English</option>
+                <option value="ar">العربية</option>
+            </select>
+            <a href="{% url 'cuisinier_logout' %}" id="logout-btn"
+               class="px-4 py-2 rounded-full bg-gradient-to-r from-red-400 to-red-600 text-white font-bold hover:from-red-500 hover:to-red-700 shadow transition text-base">
+                Déconnexion
+            </a>
+        </div>
+    </nav>
+
+    <main class="max-w-6xl mx-auto">
+        <h1 id="main-title" class="text-lg md:text-xl font-bold text-blue-800 mb-4 flex items-center gap-2">
+            <span class="text-2xl">👨‍🍳</span> Toutes les commandes à la cuisine
+        </h1>
+        <div class="flex justify-end mb-4">
+            <label class="flex items-center gap-2 cursor-pointer select-none">
+                <input type="checkbox" id="toggle-served" class="accent-blue-600 w-4 h-4">
+                <span id="hide-served-label" class="text-blue-800 text-sm font-semibold">Cacher les plats servis</span>
+            </label>
+        </div>
+        {% if orders %}
+            <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {% for order in orders %}
+                <section class="order-section bg-white rounded-lg border border-gray-200 p-3 md:p-4 text-sm"
+                    data-order-status="{{ order.status }}">
+                    <div class="flex justify-between items-center mb-2">
+                        <h2 class="font-bold text-blue-800 text-base flex items-center gap-1">
+                            🍽️ #{{ order.id }} — Table {{ order.table.number }}
+                        </h2>
+                        <span class="px-2 py-0.5 rounded-full text-xs font-semibold
+                            {% if order.status == 'nouvelle' %} bg-red-100 text-red-700
+                            {% elif order.status == 'preparation' %} bg-yellow-100 text-yellow-800
+                            {% elif order.status == 'prete' %} bg-green-100 text-green-800
+                            {% elif order.status == 'servie' %} bg-gray-200 text-gray-700
+                            {% else %} bg-blue-100 text-blue-700
+                            {% endif %}">
+                            {{ order.get_status_display }}
+                        </span>
+                    </div>
+                    <div class="space-y-2">
+                        {% for item in order.sorted_items %}
+                            <div class="item-block flex items-center gap-2 border border-gray-100 rounded p-2 bg-gray-50"
+                                 data-item-status="{{ item.statut }}">
+                                {% if item.item.image %}
+                                    <img src="{{ item.item.image.url }}" alt="{{ item.item.name }}" class="w-8 h-8 object-cover rounded">
+                                {% else %}
+                                    <img src="https://via.placeholder.com/32x32?text=Img" alt="Pas d'image" class="w-8 h-8 object-cover rounded">
+                                {% endif %}
+                                <span class="font-medium text-blue-900 truncate">{{ item.item.name }}</span>
+                                <span class="text-gray-700 font-semibold ml-auto">x{{ item.quantity }}</span>
+                                <span class="inline-block px-2 py-0.5 rounded-full text-xs font-bold
+                                    {% if item.statut == 'nouvelle' %} bg-red-400 text-white
+                                    {% elif item.statut == 'preparation' %} bg-yellow-300 text-gray-900
+                                    {% elif item.statut == 'prete' %} bg-green-500 text-white
+                                    {% elif item.statut == 'servie' %} bg-gray-300 text-white
+                                    {% else %} bg-gray-200 text-gray-700
+                                    {% endif %}">
+                                    {{ item.get_statut_display }}
+                                </span>
+                                {% if item.statut == 'nouvelle' or item.statut == 'preparation' %}
+                                <form method="post" action="{% url 'update_orderitem_status' item.id %}" class="flex gap-1 items-center ml-2">
+                                    {% csrf_token %}
+                                    <select name="statut" class="rounded border px-1 py-0.5 text-xs bg-white">
+                                        {% if item.statut == 'nouvelle' %}
+                                            <option value="preparation">Préparation</option>
+                                            <option value="prete">Prêt</option>
+                                        {% elif item.statut == 'preparation' %}
+                                            <option value="prete">Prêt</option>
+                                        {% endif %}
+                                    </select>
+                                    <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white px-2 py-0.5 rounded text-xs">OK</button>
+                                </form>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                    <div class="flex justify-end mt-3">
+                        {% if order.status == 'nouvelle' %}
+                            <form method="post" action="{% url 'update_order_status' order.id %}">
+                                {% csrf_token %}
+                                <input type="hidden" name="status" value="preparation">
+                                <button type="submit" class="bg-yellow-400 hover:bg-yellow-500 text-white font-bold px-3 py-1 rounded text-xs">
+                                    Tout en préparation
+                                </button>
+                            </form>
+                        {% elif order.status == 'preparation' %}
+                            <form method="post" action="{% url 'update_order_status' order.id %}">
+                                {% csrf_token %}
+                                <input type="hidden" name="status" value="prete">
+                                <button type="submit" class="bg-green-500 hover:bg-green-600 text-white font-bold px-3 py-1 rounded text-xs">
+                                    Tout prêt
+                                </button>
+                            </form>
+                        {% endif %}
+                    </div>
+                </section>
+            {% endfor %}
+            </div>
+        {% else %}
+            <div class="bg-white rounded-lg p-6 text-center text-base text-gray-400 mt-10">
+                Aucune commande à préparer.
+            </div>
+        {% endif %}
+    </main>
+
+    <footer class="mt-16 text-center">
+        <div class="flex flex-col items-center gap-2 py-6">
+            <div class="flex items-center gap-2 justify-center">
+                <span class="text-2xl">🍽️</span>
+                <span class="text-blue-700 font-bold text-lg" id="footer-title">Menu QR Cuisine</span>
+            </div>
+            <p class="text-gray-500 text-sm" id="footer-madeby">
+                &copy; {{ now|date:"Y" }} Réalisé par HECHANE Abdellah. Tous droits réservés.
+            </p>
+            <div class="flex gap-2 justify-center mt-1">
+                <span class="inline-block w-2 h-2 rounded-full bg-blue-400"></span>
+                <span class="inline-block w-2 h-2 rounded-full bg-green-400"></span>
+                <span class="inline-block w-2 h-2 rounded-full bg-yellow-400"></span>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Cacher/afficher les plats servis
+        document.addEventListener('DOMContentLoaded', function() {
+            const toggle = document.getElementById('toggle-served');
+            toggle.addEventListener('change', function() {
+                document.querySelectorAll('.item-block').forEach(block => {
+                    if (toggle.checked && block.dataset.itemStatus === 'servie') {
+                        block.classList.add('hidden');
+                    } else {
+                        block.classList.remove('hidden');
+                    }
+                });
+            });
+        });
+
+        // --- Gestion multilingue ---
+        const translations = {
+            fr: {
+                navbarTitle: "👨‍🍳 Espace Cuisine",
+                logout: "Déconnexion",
+                mainTitle: "👨‍🍳 Toutes les commandes à la cuisine",
+                hideServed: "Cacher les plats servis",
+                menuCuisine: "Menu QR Cuisine",
+                madeBy: "Réalisé par HECHANE Abdellah & FINIGUE Lahcen. Tous droits réservés.",
+                statusNouvelle: "Nouvelle",
+                statusPreparation: "Préparation",
+                statusPrete: "Prête",
+                statusServie: "Servie",
+                ok: "OK",
+                allPreparation: "Tout en préparation",
+                allReady: "Tout prêt",
+                noOrders: "Aucune commande à préparer.",
+                date: "Date",
+                total: "Total",
+                cancel: "Annuler",
+                errorLoad: "Erreur lors du chargement des commandes."
+            },
+            en: {
+                navbarTitle: "👨‍🍳 Kitchen Area",
+                logout: "Logout",
+                mainTitle: "👨‍🍳 All kitchen orders",
+                hideServed: "Hide served dishes",
+                menuCuisine: "QR Menu Kitchen",
+                madeBy: "Made by HECHANE Abdellah & FINIGUE Lahcen. All rights reserved.",
+                statusNouvelle: "New",
+                statusPreparation: "Preparation",
+                statusPrete: "Ready",
+                statusServie: "Served",
+                ok: "OK",
+                allPreparation: "All to preparation",
+                allReady: "All ready",
+                noOrders: "No orders to prepare.",
+                date: "Date",
+                total: "Total",
+                cancel: "Cancel",
+                errorLoad: "Error loading orders."
+            },
+            ar: {
+                navbarTitle: "👨‍🍳 قسم المطبخ",
+                logout: "تسجيل الخروج",
+                mainTitle: "👨‍🍳 جميع الطلبات في المطبخ",
+                hideServed: "إخفاء الأطباق المقدمة",
+                menuCuisine: "قائمة QR للمطبخ",
+                madeBy: "أنجزه HECHANE Abdellah و FINIGUE Lahcen. جميع الحقوق محفوظة.",
+                statusNouvelle: "جديد",
+                statusPreparation: "قيد التحضير",
+                statusPrete: "جاهز",
+                statusServie: "مقدم",
+                ok: "موافق",
+                allPreparation: "جميعها قيد التحضير",
+                allReady: "جميعها جاهزة",
+                noOrders: "لا توجد طلبات للتحضير.",
+                date: "التاريخ",
+                total: "المجموع",
+                cancel: "إلغاء",
+                errorLoad: "حدث خطأ أثناء تحميل الطلبات."
+            }
+        };
+
+        function changeLanguage() {
+            const lang = document.getElementById('language').value;
+            localStorage.setItem('selectedLanguageCuisine', lang);
+            updateLanguage(lang);
+        }
+
+        function updateLanguage(lang) {
+            // Navbar
+            document.getElementById('navbar-title').innerHTML = translations[lang].navbarTitle;
+            document.getElementById('logout-btn').textContent = translations[lang].logout;
+
+            // Main
+            document.getElementById('main-title').innerHTML = translations[lang].mainTitle;
+            document.getElementById('hide-served-label').textContent = translations[lang].hideServed;
+
+            // Footer
+            document.getElementById('footer-title').textContent = translations[lang].menuCuisine;
+            document.getElementById('footer-madeby').textContent = "© " + new Date().getFullYear() + " " + translations[lang].madeBy;
+
+            // Statuts dynamiques des commandes
+            document.querySelectorAll('.order-section .rounded-full').forEach(span => {
+                let txt = span.textContent.trim();
+                if (txt === "Nouvelle" || txt === "New" || txt === "جديد") span.textContent = translations[lang].statusNouvelle;
+                if (txt === "Préparation" || txt === "Preparation" || txt === "قيد التحضير") span.textContent = translations[lang].statusPreparation;
+                if (txt === "Prête" || txt === "Ready" || txt === "جاهز") span.textContent = translations[lang].statusPrete;
+                if (txt === "Servie" || txt === "Served" || txt === "مقدم") span.textContent = translations[lang].statusServie;
+            });
+
+            // Statuts dynamiques des plats
+            document.querySelectorAll('.item-block .rounded-full').forEach(span => {
+                let txt = span.textContent.trim();
+                if (txt === "Nouvelle" || txt === "New" || txt === "جديد") span.textContent = translations[lang].statusNouvelle;
+                if (txt === "Préparation" || txt === "Preparation" || txt === "قيد التحضير") span.textContent = translations[lang].statusPreparation;
+                if (txt === "Prête" || txt === "Ready" || txt === "جاهز") span.textContent = translations[lang].statusPrete;
+                if (txt === "Servie" || txt === "Served" || txt === "مقدم") span.textContent = translations[lang].statusServie;
+            });
+
+            // Boutons de validation
+            document.querySelectorAll('button[type="submit"]').forEach(btn => {
+                if (["OK", "موافق"].includes(btn.textContent.trim())) btn.textContent = translations[lang].ok;
+                if (["Tout en préparation", "All to preparation", "جميعها قيد التحضير"].includes(btn.textContent.trim())) btn.textContent = translations[lang].allPreparation;
+                if (["Tout prêt", "All ready", "جميعها جاهزة"].includes(btn.textContent.trim())) btn.textContent = translations[lang].allReady;
+            });
+
+            // Message si aucune commande
+            const noOrdersDiv = document.querySelector('.noOrders');
+            if (noOrdersDiv) noOrdersDiv.textContent = translations[lang].noOrders;
+        }
+
+        // Initialisation unique au chargement
+        document.addEventListener('DOMContentLoaded', function() {
+            const savedLang = localStorage.getItem('selectedLanguageCuisine') || 'fr';
+            document.getElementById('language').value = savedLang;
+            updateLanguage(savedLang);
+
+            // Si tu utilises un fetch dynamique, appelle updateLanguage à la fin du fetch
+            // Exemple :
+            // fetch(...).then(...).then(() => updateLanguage(savedLang));
+        });
+
+        // Si tu utilises un fetch pour charger dynamiquement les commandes,
+        // assure-toi d'appeler updateLanguage(lang) après avoir injecté le HTML.
+    </script>
+</body>
+</html>

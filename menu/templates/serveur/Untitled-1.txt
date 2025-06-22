@@ -1,0 +1,2 @@
+path('cancel-order/<int:order_id>/', views.cancel_order, name='cancel_order'),
+<form method="post" action="{% url 'serveur_mark_all_served' order.id %}" class="mt-4">

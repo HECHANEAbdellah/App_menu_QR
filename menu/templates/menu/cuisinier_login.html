@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Connexion Cuisinier</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gradient-to-br from-blue-50 via-green-50 to-yellow-50 min-h-screen flex items-center justify-center">
+    <div class="fixed inset-0 flex items-center justify-center z-50 bg-black/10">
+        <form method="post" class="bg-white p-6 sm:p-8 rounded-2xl shadow-2xl max-w-sm w-full flex flex-col gap-5 border border-gray-100">
+            {% csrf_token %}
+            <div class="flex flex-col items-center gap-2 mb-2">
+                <svg class="w-12 h-12 text-blue-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 11c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm0 2c-2.21 0-4 1.79-4 4v1h8v-1c0-2.21-1.79-4-4-4z"/>
+                </svg>
+                <h2 class="text-2xl font-extrabold text-blue-700 text-center">Connexion Cuisinier</h2>
+            </div>
+            {% if error %}
+                <div class="mb-2 text-red-600 text-center font-semibold text-base">{{ error }}</div>
+            {% endif %}
+            <input type="text" name="username" placeholder="Nom d'utilisateur"
+                   class="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 text-base" required>
+            <input type="password" name="password" placeholder="Mot de passe"
+                   class="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-400 text-base" required>
+            <button type="submit"
+                    class="w-full bg-blue-600 text-white py-3 rounded-lg hover:bg-blue-700 font-bold text-base transition">
+                Se connecter
+            </button>
+        </form>
+    </div>
+</body>
+</html>
